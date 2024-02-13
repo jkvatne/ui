@@ -3,11 +3,12 @@
 // that can be found in the LICENSE file.
 module ui
 
+import math
+
 @[heap]
 pub struct Rectangle {
 pub mut:
 	id string
-	// color    gx.Color
 	text     string
 	offset_x int
 	offset_y int
@@ -21,7 +22,6 @@ pub mut:
 	style_params RectangleStyleParams
 	// text styles
 	text_styles TextStyles
-	// text_size   f64
 	// component state for composable widget
 	component voidptr
 mut:
@@ -30,7 +30,7 @@ mut:
 	z_index int
 	radius  int
 	border  bool
-	// border_color gx.Color
+	border_width f32
 	hidden bool
 }
 
@@ -42,14 +42,9 @@ pub struct RectangleParams {
 	height  int
 	width   int
 	z_index int
-	// color        gx.Color = gx.Color{0, 0, 0, 0}
 	radius int
 	border bool
-	// border_color gx.Color = gx.Color{
-	// 	r: 180
-	// 	g: 180
-	// 	b: 190
-	// }
+	border_width f32
 	x int
 	y int
 	// text_size f64
@@ -65,13 +60,14 @@ pub fn rectangle(c RectangleParams) &Rectangle {
 		z_index: c.z_index
 		radius: c.radius
 		style_params: c.RectangleStyleParams
-		// color: c.color
 		border: c.border
-		// border_color: c.border_color
+		border_width: c.border_width
 		ui: unsafe { nil }
 		x: c.x
 		y: c.y
-		// text_size: c.text_size
+	}
+	if rect.border && rect.border_width == 0 {
+		rect.border_width = 1.0
 	}
 	rect.style_params.style = c.theme
 	return rect
@@ -146,16 +142,21 @@ fn (mut r Rectangle) draw_device(mut d DrawDevice) {
 			println('Rectangle(${r.id}): (${r.x}, ${r.y}, ${r.width}, ${r.height})')
 		}
 	}
+	// a border is implemented by drawing first a filled rectangle with border color and
+	// then a slightly smaller rectangle with background color.
 	if r.radius > 0 {
-		d.draw_rounded_rect_filled(r.x, r.y, r.width, r.height, r.radius, r.style.color)
-		if r.border {
-			d.draw_rounded_rect_empty(r.x, r.y, r.width, r.height, r.radius, r.style.border_color)
+		if r.border_width>0 {
+			d.draw_rounded_rect_filled(r.x, r.y, r.width, r.height, r.radius, r.style.border_color)
 		}
+		d.draw_rounded_rect_filled(r.x+r.border_width, r.y+r.border_width, r.width-r.border_width*2,
+			r.height-r.border_width*2,
+			math.max(f32(0), f32(r.radius)-r.border_width), r.style.color)
 	} else {
-		d.draw_rect_filled(r.x, r.y, r.width, r.height, r.style.color)
-		if r.border {
-			d.draw_rect_empty(r.x, r.y, r.width, r.height, r.style.border_color)
+		if r.border_width>0 {
+			d.draw_rect_filled(r.x, r.y, r.width, r.height, r.style.border_color)
 		}
+		d.draw_rect_filled(r.x+r.border_width, r.y+r.border_width, f32(r.width)-r.border_width*2,
+			f32(r.height)-r.border_width*2, r.style.color)
 	}
 	// Display rectangle text
 	if r.text != '' {
