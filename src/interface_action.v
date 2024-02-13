@@ -31,7 +31,7 @@ pub fn (mut s Actionable) add_action(action string, context voidptr, action_fn A
 // TODO: documentation
 pub fn (s &Actionable) run_action(action string) {
 	if action in s.actions {
-		action_ := s.actions[action]
+		action_ := s.actions[action] or {Action{}}
 		action_.action_fn(action_.context)
 	}
 }
